@@ -10,7 +10,11 @@ This project is an **end-to-end system** for detecting Alzheimer’s disease sta
 
 1. **Machine Learning Module** – CNN-based model for classifying Alzheimer stages.
 2. **Backend API (FastAPI)** – Serves predictions and stores patient information.
+<<<<<<< HEAD
 3. **Android App** – Users can upload MRI images to get predictions (folder included, development in progress).
+=======
+3. **Android App (Optional)** – Users can upload MRI images to get predictions (folder included, development in progress).
+>>>>>>> 5dc5fbae3ca2292a8b9047d9acfeaa64e430ea4b
 
 ---
 
