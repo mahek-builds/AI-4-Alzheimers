@@ -1,7 +1,5 @@
+# Use Python 3.10 slim (stable for TF 2.15)
 FROM python:3.10-slim
-
-# Prevent Python buffering
-ENV PYTHONUNBUFFERED=1
 
 # Set working directory
 WORKDIR /app
@@ -10,13 +8,14 @@ WORKDIR /app
 COPY requirements.txt .
 
 # Install dependencies
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend code
 COPY . .
 
-# Railway port
+# Expose port
 EXPOSE 8000
 
-# Start FastAPI
+# Command to run FastAPI
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
