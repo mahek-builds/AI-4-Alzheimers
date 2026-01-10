@@ -1,21 +1,17 @@
-# Base image
-FROM python:3.10-slim
+# Use official TensorFlow CPU image
+FROM tensorflow/tensorflow:2.15.0-cpu
 
-# Working directory
 WORKDIR /app
 
-# Copy requirements
+# Copy requirements first (better caching)
 COPY requirements.txt .
 
-# Upgrade pip & install dependencies
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Install only lightweight dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code including model folder
+# Copy app + model
 COPY . .
 
-# Expose port
 EXPOSE 8000
 
-# Run FastAPI
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

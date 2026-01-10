@@ -1,0 +1,49 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter / experiments
+*.ipynb
+.ipynb_checkpoints/
+
+# Dataset (NOT needed in production)
+dataset/
+data/
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Virtual environments
+venv/
+.env/
+
+# Archives
+*.zip
+*.tar
+*.gz
+
+# Node / frontend (if any)
+node_modules/
+
+# Documentation
+README.md
+
+# Shell scripts (if not used in container)
+start.sh
+
+# Utilities / notebooks
+utils/
+
+# Anything not needed at runtime
+tests/
