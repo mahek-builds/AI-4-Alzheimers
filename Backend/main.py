@@ -4,6 +4,10 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+import os
+
+# Safety: disable GPU (Railway CPU only)
+tf.config.set_visible_devices([], 'GPU')
 
 app = FastAPI(title="Alzheimer MRI Classification API")
 
@@ -15,7 +19,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-model = tf.keras.models.load_model("model/alzheimer_Model_final.h5")
+MODEL_PATH = "model/alzheimer_Model_final.h5"
+
+model = tf.keras.models.load_model(MODEL_PATH)
 
 classes = [
     "Mild Impairment",
@@ -25,11 +31,6 @@ classes = [
 ]
 
 def is_mri_like(image: Image.Image) -> bool:
-    """
-    Basic MRI check:
-    - MRI images are mostly grayscale
-    - RGB channel difference should be low
-    """
     img = np.array(image.convert("RGB"))
     r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]
 
@@ -37,7 +38,7 @@ def is_mri_like(image: Image.Image) -> bool:
     diff_rb = np.mean(np.abs(r - b))
     diff_gb = np.mean(np.abs(g - b))
 
-    return (diff_rg < 15 and diff_rb < 15 and diff_gb < 15)
+    return diff_rg < 15 and diff_rb < 15 and diff_gb < 15
 
 def prepare_image(image):
     image = image.convert("RGB")
@@ -45,32 +46,25 @@ def prepare_image(image):
     img_array = np.expand_dims(np.array(image), axis=0)
     return preprocess_input(img_array)
 
+@app.get("/")
+def root():
+    return {"status": "API running"}
+
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid file type. Please upload an image."
-        )
-
+        raise HTTPException(status_code=400, detail="Invalid file type")
 
     try:
         image = Image.open(file.file)
-        image.verify()  
+        image.verify()
         file.file.seek(0)
         image = Image.open(file.file)
     except Exception:
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid or corrupted image file."
-        )
+        raise HTTPException(status_code=400, detail="Invalid image")
 
-   
     if not is_mri_like(image):
-        raise HTTPException(
-            status_code=400,
-            detail="Uploaded image is not a valid brain MRI."
-        )
+        raise HTTPException(status_code=400, detail="Not a valid MRI")
 
     img = prepare_image(image)
     preds = model.predict(img)
