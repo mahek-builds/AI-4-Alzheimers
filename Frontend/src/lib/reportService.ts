@@ -1,0 +1,176 @@
+import jsPDF from 'jspdf';
+
+export interface Report {
+  id: string;
+  userId: string;
+  fileName: string;
+  prediction: string;
+  confidence?: number;
+  details?: string;
+  createdAt: string;
+  imagePreview?: string;
+}
+
+const REPORTS_STORAGE_KEY = 'alzheimer_reports';
+
+export const saveReport = (report: Omit<Report, 'id' | 'createdAt'>): Report => {
+  const reports = getReports();
+  const newReport: Report = {
+    ...report,
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+  };
+  reports.push(newReport);
+  localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(reports));
+  return newReport;
+};
+
+export const getReports = (): Report[] => {
+  try {
+    const stored = localStorage.getItem(REPORTS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const getReportsByUser = (userId: string): Report[] => {
+  return getReports().filter(r => r.userId === userId);
+};
+
+export const deleteReport = (reportId: string): void => {
+  const reports = getReports().filter(r => r.id !== reportId);
+  localStorage.setItem(REPORTS_STORAGE_KEY, JSON.stringify(reports));
+};
+
+export const generatePDF = (report: Report): void => {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Header
+  doc.setFillColor(37, 99, 235);
+  doc.rect(0, 0, pageWidth, 40, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text('MRI Analysis Report', pageWidth / 2, 25, { align: 'center' });
+  
+  // Reset text color
+  doc.setTextColor(0, 0, 0);
+  
+  // Report Info Section
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  let y = 55;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('Report Details', 20, y);
+  y += 10;
+  
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 100, 100);
+  doc.text(`Report ID: ${report.id.slice(0, 8)}...`, 20, y);
+  y += 7;
+  doc.text(`Date: ${new Date(report.createdAt).toLocaleString()}`, 20, y);
+  y += 7;
+  doc.text(`File: ${report.fileName}`, 20, y);
+  y += 15;
+  
+  // Divider
+  doc.setDrawColor(200, 200, 200);
+  doc.line(20, y, pageWidth - 20, y);
+  y += 15;
+  
+  // Prediction Result
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Analysis Result', 20, y);
+  y += 12;
+  
+  // Prediction box
+  const prediction = report.prediction;
+  const isNormal = prediction.toLowerCase().includes('non') || 
+                   prediction.toLowerCase().includes('normal') || 
+                   prediction.toLowerCase().includes('healthy');
+  
+  if (isNormal) {
+    doc.setFillColor(220, 252, 231);
+  } else {
+    doc.setFillColor(254, 226, 226);
+  }
+  doc.roundedRect(20, y - 5, pageWidth - 40, 25, 3, 3, 'F');
+  
+  doc.setFontSize(18);
+  if (isNormal) {
+    doc.setTextColor(22, 163, 74);
+  } else {
+    doc.setTextColor(220, 38, 38);
+  }
+  doc.text(prediction, pageWidth / 2, y + 10, { align: 'center' });
+  y += 35;
+  
+  // Confidence
+  if (report.confidence !== undefined) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Confidence Score', 20, y);
+    y += 8;
+    
+    // Progress bar background
+    doc.setFillColor(229, 231, 235);
+    doc.roundedRect(20, y, pageWidth - 40, 10, 2, 2, 'F');
+    
+    // Progress bar fill
+    const barWidth = ((pageWidth - 40) * report.confidence) / 100;
+    doc.setFillColor(37, 99, 235);
+    doc.roundedRect(20, y, barWidth, 10, 2, 2, 'F');
+    
+    y += 15;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 100, 100);
+    doc.text(`${report.confidence.toFixed(1)}%`, 20, y);
+    y += 15;
+  }
+  
+  // Details
+  if (report.details) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Additional Details', 20, y);
+    y += 8;
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60, 60, 60);
+    const splitDetails = doc.splitTextToSize(report.details, pageWidth - 40);
+    doc.text(splitDetails, 20, y);
+    y += splitDetails.length * 6 + 10;
+  }
+  
+  // Disclaimer
+  y = Math.max(y + 10, 220);
+  doc.setFillColor(254, 243, 199);
+  doc.roundedRect(20, y, pageWidth - 40, 35, 3, 3, 'F');
+  
+  doc.setFontSize(9);
+  doc.setTextColor(146, 64, 14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Important Disclaimer', 25, y + 10);
+  
+  doc.setFont('helvetica', 'normal');
+  const disclaimer = 'This AI prediction is meant to assist medical professionals and should not be used as a sole basis for diagnosis. Please consult with a qualified healthcare provider for clinical decisions.';
+  const splitDisclaimer = doc.splitTextToSize(disclaimer, pageWidth - 50);
+  doc.text(splitDisclaimer, 25, y + 18);
+  
+  // Footer
+  doc.setTextColor(150, 150, 150);
+  doc.setFontSize(8);
+  doc.text('Generated by AI for Alzheimer\'s Detection System', pageWidth / 2, 285, { align: 'center' });
+  
+  // Save
+  const fileName = `MRI_Report_${new Date().toISOString().split('T')[0]}_${report.id.slice(0, 8)}.pdf`;
+  doc.save(fileName);
+};
